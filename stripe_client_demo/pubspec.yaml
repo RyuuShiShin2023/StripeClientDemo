@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_stripe: ^9.5.0+1
+  flutter_stripe_web: ^4.5.0
 
 dev_dependencies:
   flutter_test:
