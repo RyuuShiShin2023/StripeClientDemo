@@ -1,6 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 
 void main() {
+  Stripe.publishableKey =
+      'pk_test_51O9RVjECnWC5p0a0hUU95I5M7rfluvfYqVk62pajo0LSdAYgulXeHd5EQsSrXhWuJecBVPuvUxd4lkqVNC0TI5kj00KkdUtlSC';
   runApp(const MainApp());
 }
 
@@ -9,10 +13,52 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       home: Scaffold(
         body: Center(
-          child: Text('Hello World!'),
+          child: ElevatedButton(
+            onPressed: () async {
+              try {
+                await Stripe.instance.initPaymentSheet(
+                  paymentSheetParameters: SetupPaymentSheetParameters(
+                    merchantDisplayName: 'Flutter Stripe Example',
+                    intentConfiguration: IntentConfiguration(
+                      mode: const IntentMode(currencyCode: 'jpy', amount: 1000),
+                      confirmHandler: (result, shouldSavePaymentMethod) async {
+                        final response = await Dio().post(
+                          '192.168.0.5:3000/first.php',
+                          data: {
+                            'payment_method_id': result.id,
+                            'should_save_payment_method':
+                                shouldSavePaymentMethod,
+                          },
+                        );
+                        Stripe.instance.intentCreationCallback(
+                          IntentCreationCallbackParams(
+                            clientSecret: response.data['client_secret'],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              } on StripeException catch (e) {
+                final error = e.error;
+                switch (error.code) {
+                  case FailureCode.Canceled:
+                    debugPrint('キャンセルされました.\nerror: $error');
+                    break;
+                  case FailureCode.Failed:
+                    debugPrint('エラーが発生しました.\nerror: $error');
+                    break;
+                  case FailureCode.Timeout:
+                    debugPrint('タイムアウトしました.\nerror: $error');
+                    break;
+                }
+              }
+            },
+            child: const Text('Pay'),
+          ),
         ),
       ),
     );
