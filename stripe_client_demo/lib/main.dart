@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
@@ -25,23 +27,30 @@ class MainApp extends StatelessWidget {
                     intentConfiguration: IntentConfiguration(
                       mode: const IntentMode(currencyCode: 'jpy', amount: 1000),
                       confirmHandler: (result, shouldSavePaymentMethod) async {
-                        final response = await Dio().post(
-                          '192.168.0.5:3000/first.php',
-                          data: {
-                            'payment_method_id': result.id,
-                            'should_save_payment_method':
-                                shouldSavePaymentMethod,
-                          },
-                        );
-                        Stripe.instance.intentCreationCallback(
-                          IntentCreationCallbackParams(
-                            clientSecret: response.data['client_secret'],
-                          ),
-                        );
+                        try {
+                          final response = await Dio().post(
+                            'http://192.168.100.159:3000/first.php',
+                            data: {
+                              'payment_method_id': result.id,
+                              'should_save_payment_method':
+                                  shouldSavePaymentMethod,
+                            },
+                          );
+                          final Map<String, String> map =
+                              Map.castFrom(json.decode(response.data));
+                          Stripe.instance.intentCreationCallback(
+                            IntentCreationCallbackParams(
+                              clientSecret: map['client_secret'],
+                            ),
+                          );
+                        } on Exception catch (e) {
+                          debugPrint('Dio Error.\nerror: $e');
+                        }
                       },
                     ),
                   ),
                 );
+                await Stripe.instance.presentPaymentSheet();
               } on StripeException catch (e) {
                 final error = e.error;
                 switch (error.code) {
